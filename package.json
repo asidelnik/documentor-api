@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "api": "node server.js"
+    "node": "node --env-file=config.env src/server.js",
+    "build": "rimraf ./build && tsc",
+    "start": "npm run build && node --env-file=config.env build/server",
+    "db-insert": "node --env-file=config.env src/db/db-insert.js"
   },
   "author": "",
   "license": "ISC",
