@@ -5,172 +5,153 @@ import { collections } from '../services/db.service';
 // Create an instance of the express router.
 const videos = express.Router();
 
-videos.put('/video-set-status/:id', (req, res) => {
-  const db = router.db; // lowdb instance
+videos.put('/video-set-status/:id', async (req, res) => {
   const { id } = req.params;
   const { status } = req.query;
 
-  const videoExists = db.get('videos').find({ id }).value() !== undefined;
+  try {
+    const video = await collections.videos.findOne({ _id: new ObjectId(id) });
 
-  if (videoExists) {
-    db.get('videos').find({ id }).assign({ status: Number(status) }).write();
-    res.json({ message: 'Video status updated successfully' });
-    // res.status(404).send('Video not found');
-  } else {
-    res.status(404).send('Video not found');
+    if (video) {
+      await collections.videos.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: Number(status) } }
+      );
+      res.json({ message: 'Video status updated successfully' });
+    } else {
+      res.status(404).send('Video not found');
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating video status', error });
   }
 });
 
+videos.put('/video-set-event/:id', async (req, res) => {
+  const { id } = req.params;
+  let { newEventId, oldEventId } = req.query;
 
-videos.put('/video-set-event/:id', (req, res) => {
+  newEventId = newEventId === 'null' ? null : new ObjectId(newEventId);
+  oldEventId = oldEventId === 'null' ? null : new ObjectId(oldEventId);
+
   try {
-    const db = router.db; // lowdb instance
-    const { id } = req.params;
-    let { newEventId, oldEventId } = req.query;
+    const video = await collections.videos.findOne({ _id: new ObjectId(id) });
 
-    newEventId = newEventId === 'null' ? null : newEventId;
-    oldEventId = oldEventId === 'null' ? null : oldEventId;
-
-    const videoExists = db.get('videos').find({ id }).value() !== undefined;
-    if (!videoExists) {
-      throw new Error('Video not found');
+    if (!video) {
+      return res.status(404).send('Video not found');
     }
 
     if (newEventId === null) {
-      db.get('videos').find({ id }).assign({ eventId: null }).write();
+      await collections.videos.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { eventId: null } }
+      );
       if (oldEventId !== null) {
-        db.get('events')
-          .find({ id: oldEventId })
-          .update('videoIds', videoIds => videoIds.filter(videoId => videoId !== id))
-          .write();
+        await collections.events.updateOne(
+          { _id: oldEventId },
+          { $pull: { videoIds: new ObjectId(id) } }
+        );
       }
     } else {
-      const newEvent = db.get('events').find({ id: newEventId }).value();
-      const newEventExists = newEvent !== undefined;
+      const newEvent = await collections.events.findOne({ _id: newEventId });
 
-      if (videoExists && newEventExists) {
-        // Set Video's eventId
-        db.get('videos').find({ id }).assign({ eventId: newEventId }).write();
+      if (newEvent) {
+        await collections.videos.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { eventId: newEventId } }
+        );
 
         if (!newEvent.videoIds.includes(id)) {
-          // If the Video doesn't exist in the Event, add it
-          db.get('events')
-            .find({ id: newEventId })
-            .update('videoIds', videoIds => [...videoIds, id])
-            .write();
+          await collections.events.updateOne(
+            { _id: newEventId },
+            { $push: { videoIds: new ObjectId(id) } }
+          );
 
-          // If the Video existed in another event, remove it
           if (oldEventId !== null) {
-            db.get('events')
-              .find({ id: oldEventId })
-              .update('videoIds', videoIds => videoIds.filter(videoId => videoId !== id))
-              .write();
+            await collections.events.updateOne(
+              { _id: oldEventId },
+              { $pull: { videoIds: new ObjectId(id) } }
+            );
           }
         }
       } else {
-        throw new Error('Video or event not found')
+        return res.status(404).send('Event not found');
       }
     }
     res.json({ message: 'Success' });
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ message: 'Error updating video event' });
   }
 });
 
-
-videos.get('/videos', (req, res) => {
+videos.get('/videos', async (req, res) => {
   const { fromDate, toDate, statuses, page = 1, limit = 10 } = req.query;
   let { eventId } = req.query;
 
-  const db = router.db; // lowdb instance
-  let videos = db.get('videos').value();
+  try {
+    let query = {};
 
-  if (fromDate && toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    videos = videos.filter(video => {
-      const videoDate = new Date(video.startTime);
-      return videoDate >= from && videoDate <= to;
-    });
-  } else if (fromDate) {
-    const from = new Date(fromDate);
-    videos = videos.filter(video => {
-      const videoDate = new Date(video.startTime);
-      return videoDate >= from;
-    });
-  } else if (toDate) {
-    const to = new Date(toDate);
-    videos = videos.filter(video => {
-      const videoDate = new Date(video.startTime);
-      return videoDate <= to;
-    });
+    if (fromDate && toDate) {
+      query.startTime = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+    } else if (fromDate) {
+      query.startTime = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      query.startTime = { $lte: new Date(toDate) };
+    }
+
+    if (statuses) {
+      const statusesArray = statuses.split(',').map(Number);
+      query.status = { $in: statusesArray };
+    }
+
+    eventId = eventId === 'null' ? null : new ObjectId(eventId);
+    if (eventId) {
+      query.eventId = eventId;
+    }
+
+    const videos = await collections.videos
+      .find(query)
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .toArray();
+
+    res.json(videos);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching videos', error });
   }
-
-  if (!statuses || statuses === '') {
-    videos = [];
-  } else {
-    const statusesArray = statuses.split(',').map(Number);
-    videos = videos.filter(video => statusesArray.includes(video.status));
-  }
-
-  eventId = eventId === 'null' ? null : eventId;
-  if (eventId) {
-    videos = videos.filter(video => video.eventId === eventId);
-  }
-
-  // const videosCount = videos.length;
-
-  // Pagination
-  const start = (page - 1) * limit;
-  const end = start + limit;
-  videos = videos.slice(start, end);
-
-  res.json(videos); //{ , videosCount });
 });
 
-
-// TODO - merge the count into the videos fetch request
-videos.get('/videos-count', (req, res) => {
-  const { fromDate, toDate, statuses } = req.query; /*lat, lng, radius,*/
+videos.get('/videos-count', async (req, res) => {
+  const { fromDate, toDate, statuses } = req.query;
   let { eventId } = req.query;
-  const db = router.db;
-  let videos = db.get('videos').value();
 
-  if (fromDate && toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    videos = videos.filter(video => {
-      const videoDate = new Date(video.startTime);
-      return videoDate >= from && videoDate <= to;
-    });
+  try {
+    let query = {};
+
+    if (fromDate && toDate) {
+      query.startTime = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+    } else if (fromDate) {
+      query.startTime = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      query.startTime = { $lte: new Date(toDate) };
+    }
+
+    if (statuses) {
+      const statusesArray = statuses.split(',').map(Number);
+      query.status = { $in: statusesArray };
+    }
+
+    eventId = eventId === 'null' ? null : new ObjectId(eventId);
+    if (eventId) {
+      query.eventId = eventId;
+    }
+
+    const count = await collections.videos.countDocuments(query);
+
+    res.json(count);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching videos count' });
   }
-
-  // if (lat && lng && radius) {
-  //   const parsedRadius = tryParseInt(radius, 0);
-  //   videos = videos.filter(video => {
-  //     const distance = Math.sqrt(
-  //       Math.pow(video.startLocation.coordinates[0] - lat, 2) +
-  //       Math.pow(video.startLocation.coordinates[1] - lng, 2)
-  //     );
-  //     return distance <= parsedRadius;
-  //   });
-  // }
-
-  if (!statuses || statuses === '') {
-    videos = [];
-  } else {
-    const statusesArray = statuses.split(',').map(Number);
-    videos = videos.filter(video => statusesArray.includes(video.status));
-  }
-
-  eventId = eventId === 'null' ? null : eventId;
-  if (eventId) {
-    videos = videos.filter(video => video.eventId === eventId);
-  }
-
-  res.json(videos.length);
 });
-
 
 videos.get('*', (_req, res) => {
   res.status(404).json({ message: 'Videos resource not found' });

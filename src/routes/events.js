@@ -2,223 +2,168 @@ import express from 'express';
 import { ObjectId } from 'mongodb';
 import { collections } from '../services/db.service';
 
-
 const events = express.Router();
-/////////////////////////////////////////////////////////////////////////////////
-// Events
-/////////////////////////////////////////////////////////////////////////////////
-events.get('/events/:id', (req, res) => {
-  const db = router.db; // lowdb instance
+
+events.get('/events/:id', async (req, res) => {
   const { id } = req.params;
 
-  let event = db.get('events').find({ id }).value();
-
-  if (event) {
-    const videos = db.get('videos').filter({ eventId: id }).value();
-    event = { ...event, videos };
-    res.json(event);
-  } else {
-    res.status(404).send('Event not found');
-  }
-});
-
-
-events.get('/events-autocomplete', (req, res) => {
-  const { page = 1, limit = 100 } = req.query;
-  const db = router.db; // lowdb instance
-  let events = db.get('events').filter({ status: 1 })
-    .sort((a, b) => b.videoIds.length - a.videoIds.length)
-    .sort((a, b) => b.startTime - a.startTime)
-    .value()
-    .map(event => ({ id: event.id, label: event.title }));
-
-  // Pagination
-  const pageParsed = tryParseIntOrUndefined(page);
-  const limitParsed = tryParseIntOrUndefined(limit);
-
-  // TODO - fix this error handling. Responds with cors error instead  of json error
-  if (pageParsed === undefined || limitParsed === undefined) {
-    res.status(400).jsonp({
-      error: "Invalid pagination values"
-    })
-    return;
-  }
-
-  const start = (pageParsed - 1) * limitParsed;
-  const end = start + limitParsed;
-  events = events.slice(start, end);
-
-  res.json(events);
-});
-
-
-// GET Events by filters, sort & pagination (default sort latest)
-events.get('/events', (req, res) => {
   try {
-    const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 3 } = req.query;/*lat, lng, radius,*/
-    const db = router.db; // lowdb instance
-    let events = db.get('events').value();
+    const event = await collections.events.findOne({ _id: new ObjectId(id) });
+
+    if (event) {
+      const videos = await collections.videos.find({ eventId: new ObjectId(id) }).toArray();
+      res.json({ ...event, videos });
+    } else {
+      res.status(404).send('Event not found');
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching event', error });
+  }
+});
+
+events.get('/events-autocomplete', async (req, res) => {
+  const { page = 1, limit = 100 } = req.query;
+
+  try {
+    const events = await collections.events
+      .find({ status: 1 })
+      .sort({ videoIds: -1, startTime: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .project({ _id: 1, title: 1 })
+      .toArray();
+
+    res.json(events.map(event => ({ id: event._id, label: event.title })));
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching events', error });
+  }
+});
+
+events.get('/events', async (req, res) => {
+  const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 3 } = req.query;
+
+  try {
+    let query = {};
 
     if (fromDate && toDate) {
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
-      events = events.filter(event => {
-        const eventStartTime = new Date(event.startTime);
-        return eventStartTime >= from && eventStartTime <= to;
-      });
+      query.startTime = { $gte: new Date(fromDate), $lte: new Date(toDate) };
     } else if (fromDate) {
-      const from = new Date(fromDate);
-      events = events.filter(event => {
-        const eventStartTime = new Date(event.startTime);
-        return eventStartTime >= from;
-      });
+      query.startTime = { $gte: new Date(fromDate) };
     } else if (toDate) {
-      const to = new Date(toDate);
-      events = events.filter(event => {
-        const eventStartTime = new Date(event.startTime);
-        return eventStartTime <= to;
-      });
+      query.startTime = { $lte: new Date(toDate) };
     }
 
-    if (!priority || priority === '') {
-      events = [];
-    } else {
+    if (priority) {
       const priorityArray = priority.split(',').map(Number);
-      events = events.filter(event => priorityArray.includes(event.priority));
+      query.priority = { $in: priorityArray };
     }
 
     if (freeText && freeText.trim() !== '') {
       const lowerCaseFreeText = freeText.toLowerCase();
-      events = events.filter(event =>
-        event.title.toLowerCase().includes(lowerCaseFreeText) ||
-        event.description.toLowerCase().includes(lowerCaseFreeText)
-      );
+      query.$or = [
+        { title: { $regex: lowerCaseFreeText, $options: 'i' } },
+        { description: { $regex: lowerCaseFreeText, $options: 'i' } }
+      ];
     }
 
-    if (!statuses || statuses === '') {
-      events = [];
-    } else {
+    if (statuses) {
       const statusesArray = statuses.split(',').map(Number);
-      events = events.filter(event => statusesArray.includes(event.status));
+      query.status = { $in: statusesArray };
     }
 
-    // Add property count of event videos with status 1
-    events = events
-      .sort((a, b) => b.videoIds.length - a.videoIds.length)
-      .sort((a, b) => b.startTime - a.startTime)
-      .map(event => {
-        const eventVideos = db.get('videos').filter({ eventId: event.id }).value();
-        const eventVideosUnprocessed = db.get('videos').filter({ eventId: event.id, status: 1 }).value();
-        return {
-          id: event.id,
-          title: event.title,
-          description: event.description,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          duration: event.duration,
-          locationName: event.locationName,
-          tags: event.tags,
-          videoIds: event.videoIds,
-          status: event.status,
-          priority: event.priority,
-          videosUnprocessedCount: eventVideosUnprocessed.length,
-          videosCount: eventVideos.length
-        };
-      });
+    const events = await collections.events
+      .find(query)
+      .sort({ videoIds: -1, startTime: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .toArray();
 
-    const eventsCount = events.length;
-    // Pagination
-    const pageParsed = tryParseIntOrUndefined(page);
-    const limitParsed = tryParseIntOrUndefined(limit);
+    const eventsWithCounts = await Promise.all(events.map(async event => {
+      const eventVideos = await collections.videos.find({ eventId: event._id }).toArray();
+      const eventVideosUnprocessed = await collections.videos.find({ eventId: event._id, status: 1 }).toArray();
+      return {
+        ...event,
+        videosUnprocessedCount: eventVideosUnprocessed.length,
+        videosCount: eventVideos.length
+      };
+    }));
 
-    // TODO - fix this error handling. Responds with cors error instead  of json error
-    if (pageParsed === undefined || limitParsed === undefined) {
-      res.status(400).jsonp({
-        error: "Invalid pagination values"
-      })
-      return;
-    }
+    const eventsCount = await collections.events.countDocuments(query);
 
-    const start = (pageParsed - 1) * limitParsed;
-    const end = start + limitParsed;
-    events = events.slice(start, end);
-
-    res.json({ events, eventsCount });
+    res.json({ events: eventsWithCounts, eventsCount });
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ message: 'Error fetching events', error });
   }
 });
 
-events.post('/events', (req, res) => {
-  try {
-    const db = router.db;
-    const { title, priority, startTime, endTime, description, status } = req.body;
+events.post('/events', async (req, res) => {
+  const { title, priority, startTime, endTime, description, status } = req.body;
 
-    // Validate required fields
+  try {
     if (!title || !priority || !startTime || !status) {
       throw new Error('Missing required fields');
     }
-    // Calculate the duration
 
     const newEvent = {
-      id: (db.get('events').value().length + 1).toString(),
       title,
       description: description || '',
       startTime,
       endTime: endTime || null,
-      // duration,
-      // locationName: "Night Watch street, Westeros",
-      // startLocation: {
-      //   "type": "Point",
-      //   "coordinates": [32.0853, 34.7818],
-      //   "heading": 177
-      // },
       videoIds: [],
       tags: [],
       status,
       priority,
     };
 
-    db.get('events').push(newEvent).write();
-    res.status(201).json({ message: 'Event added successfully' });
+    const result = await collections.events.insertOne(newEvent);
+    res.status(201).json({ message: 'Event added successfully', eventId: result.insertedId });
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ message: 'Error adding event', error });
   }
 });
 
-events.put('/events/:id', (req, res) => {
+events.put('/events/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, priority, startTime, endTime, description, status } = req.body;
+
   try {
-    const db = router.db;
-    const { id } = req.params;
-    const { title, priority, startTime, endTime, description, status } = req.body;
-    // Validate required fields
     if (!title || !priority || !startTime || !status) {
       throw new Error('Missing required fields');
     }
 
-    const event = db.get('events').find({ id }).value();
+    const updatedEvent = {
+      title,
+      description,
+      startTime,
+      endTime,
+      status,
+      priority,
+    };
 
-    if (event !== undefined) {
-      const updatedEvent = { ...event, title, description, startTime, endTime, status, priority };
+    const result = await collections.events.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedEvent }
+    );
 
-      db.get('events').find({ id }).assign(updatedEvent).write();
-      res.status(200).json({ message: 'Event updated successfully' });
-    } else {
+    if (result.matchedCount === 0) {
       throw new Error('Event not found');
     }
+
+    res.status(200).json({ message: 'Event updated successfully' });
   } catch (error) {
-    res.status(500).send(error.message);
+    res.status(500).json({ message: 'Error updating event', error });
   }
 });
 
-events.get('/header-badges', (req, res) => {
-  const db = router.db;
-  // Count of videos with status unprocessed
-  const videos = db.get('videos').filter({ status: 1 }).size().value();
-  // Count of active events with high priority
-  const events = db.get('events').filter({ priority: 3, status: 1 }).size().value();
+events.get('/header-badges', async (req, res) => {
+  try {
+    const videos = await collections.videos.countDocuments({ status: 1 });
+    const events = await collections.events.countDocuments({ priority: 3, status: 1 });
 
-  res.json({ videos, events });
+    res.json({ videos, events });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching header badges', error });
+  }
 });
 
 export default events;
