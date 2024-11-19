@@ -8,9 +8,7 @@
     "node": "node --env-file=config.env src/server.js",
     "build": "rimraf ./build && tsc",
     "start": "npm run build && node --env-file=config.env build/server",
-    "db-insert": "node --env-file=config.env src/db/db-insert-.js",
-    "db-update-events": "node --env-file=config.env src/db/update-events-.js",
-    "db-update-videos": "node --env-file=config.env src/db/update-videos-.js"
+    "db-updates": "node --env-file=config.env src/db/events-update-date-type.js"
   },
   "author": "",
   "license": "ISC",
