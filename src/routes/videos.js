@@ -1,6 +1,6 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
-import { collections } from '../services/db.service';
+import { collections } from '../services/db.service.js';
 
 // Create an instance of the express router.
 const videos = express.Router();
@@ -103,9 +103,8 @@ videos.get('/videos', async (req, res) => {
       query.status = { $in: statusesArray };
     }
 
-    eventId = eventId === 'null' ? null : new ObjectId(eventId);
     if (eventId) {
-      query.eventId = eventId;
+      query.eventId = new ObjectId(eventId);
     }
 
     const videos = await collections.videos
@@ -140,11 +139,10 @@ videos.get('/videos-count', async (req, res) => {
       query.status = { $in: statusesArray };
     }
 
-    eventId = eventId === 'null' ? null : new ObjectId(eventId);
     if (eventId) {
-      query.eventId = eventId;
+      query.eventId = new ObjectId(eventId);
     }
-
+    
     const count = await collections.videos.countDocuments(query);
 
     res.json(count);

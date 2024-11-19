@@ -28,6 +28,6 @@ export async function connectToDatabase() {
   collections.events = eventsCollection;
 
   console.log(
-    `Successfully connected to db: ${documentorDB.databaseName} and collection: ${videosCollection.collectionName}`
+    `Successfully connected to db: ${documentorDB.databaseName} and collections: ${videosCollection.collectionName}, ${eventsCollection.collectionName}`
   );
 }
