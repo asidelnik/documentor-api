@@ -1,6 +1,6 @@
 import express from 'express';
 import { ObjectId } from 'mongodb';
-import { collections } from '../services/db.service';
+import { collections } from '../services/db.service.js';
 
 const events = express.Router();
 
@@ -152,17 +152,6 @@ events.put('/events/:id', async (req, res) => {
     res.status(200).json({ message: 'Event updated successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error updating event', error });
-  }
-});
-
-events.get('/header-badges', async (req, res) => {
-  try {
-    const videos = await collections.videos.countDocuments({ status: 1 });
-    const events = await collections.events.countDocuments({ priority: 3, status: 1 });
-
-    res.json({ videos, events });
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching header badges', error });
   }
 });
 
