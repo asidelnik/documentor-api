@@ -107,8 +107,8 @@ events.post('/events', async (req, res) => {
     const newEvent = {
       title,
       description: description || '',
-      startTime,
-      endTime: endTime || null,
+      startTime: new Date(startTime),
+      endTime: endTime ? new Date(endTime) : null,
       videoIds: [],
       tags: [],
       status,
@@ -134,8 +134,8 @@ events.put('/events/:id', async (req, res) => {
     const updatedEvent = {
       title,
       description,
-      startTime,
-      endTime,
+      startTime: new Date(startTime),
+      endTime: endTime ? new Date(endTime) : null,
       status,
       priority,
     };
