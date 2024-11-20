@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import videos from './routes/videos.js';
-import events from './routes/events.js';
-import shared from './routes/shared.js';
-import { connectToDatabase } from './services/db.service.js';
-import { corsOptions } from './config/corsOptions';
+import videos from './src/routes/videos.js';
+import events from './src/routes/events.js';
+import shared from './src/routes/shared.js';
+import { connectToDatabase } from './src/services/db.service.js';
+import { corsOptions } from './src/config/corsOptions.js';
 
 const PORT = process.env.PORT || 5050;
 const app = express();
