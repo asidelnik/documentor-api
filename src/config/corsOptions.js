@@ -1,4 +1,4 @@
-import { allowedOrigins } from './allowedOrigins'; // Import the allowedOrigins array from the allowedOrigins module
+import { allowedOrigins } from './allowedOrigins.js'; // Import the allowedOrigins array from the allowedOrigins module
 
 // Define the corsOptions object to configure CORS settings
 export const corsOptions = {

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "node": "node --env-file=config.env src/server.js",
-    "publish-start": "node src/server.js",
+    "node": "node --env-file=config.env server.js",
+    "publish-start": "node server.js",
     "build": "rimraf ./build && tsc",
     "start": "npm run build && node --env-file=config.env build/server",
     "db-updates": "node --env-file=config.env src/db/events-update-date-type.js"
