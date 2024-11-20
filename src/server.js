@@ -4,11 +4,12 @@ import videos from './routes/videos.js';
 import events from './routes/events.js';
 import shared from './routes/shared.js';
 import { connectToDatabase } from './services/db.service.js';
+import { corsOptions } from './config/corsOptions';
 
 const PORT = process.env.PORT || 5050;
 const app = express();
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 connectToDatabase()
