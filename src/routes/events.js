@@ -113,6 +113,7 @@ events.post('/events', async (req, res) => {
       tags: [],
       status,
       priority,
+      duration: 0
     };
 
     const result = await collections.events.insertOne(newEvent);
