@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId } from 'mongodb';
 
 const uri = process.env.ATLAS_URI || '';
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 async function run() {
   try {
@@ -22,7 +22,7 @@ async function run() {
 
     console.log('Event documents updated successfully');
   } catch (err) {
-    console.log(err);
+    console.log('Error:', err);
   } finally {
     await client.close();
   }
