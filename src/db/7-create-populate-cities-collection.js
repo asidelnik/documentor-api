@@ -3,35 +3,35 @@ import { MongoClient, ObjectId } from 'mongodb';
 const uri = process.env.ATLAS_URI || '';
 const client = new MongoClient(uri);
 
-async function createCitiesCollection() {
+async function createPopulateCitiesCollection() {
   try {
     // Connect to the Atlas cluster - db - collection
     await client.connect();
     const db = client.db(process.env.DB_NAME);
 
-    // const schema = {
-    //   validator: {
-    //     $jsonSchema: {
-    //       bsonType: 'object',
-    //       required: ['name', 'lat', 'long'],
-    //       properties: {
-    //         name: {
-    //           bsonType: 'string',
-    //           description: 'must be a string and is required'
-    //         },
-    //         lat: {
-    //           bsonType: 'double',
-    //           description: 'must be a double and is required'
-    //         },
-    //         long: {
-    //           bsonType: 'double',
-    //           description: 'must be a double and is required'
-    //         }
-    //       }
-    //     }
-    //   }
-    // };
-    // await db.createCollection('cities', schema);
+    const schema = {
+      validator: {
+        $jsonSchema: {
+          bsonType: 'object',
+          required: ['name', 'lat', 'long'],
+          properties: {
+            name: {
+              bsonType: 'string',
+              description: 'must be a string and is required'
+            },
+            lat: {
+              bsonType: 'double',
+              description: 'must be a double and is required'
+            },
+            long: {
+              bsonType: 'double',
+              description: 'must be a double and is required'
+            }
+          }
+        }
+      }
+    };
+    await db.createCollection('cities', schema);
 
     const cities = [
       { name: 'Tel Aviv - Yafo', lat: 32.0800, long: 34.7800 },
@@ -107,4 +107,4 @@ async function createCitiesCollection() {
   }
 }
 
-createCitiesCollection().catch(console.error);
+createPopulateCitiesCollection().catch(console.error);
