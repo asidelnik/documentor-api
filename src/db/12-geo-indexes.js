@@ -9,7 +9,7 @@ async function geoIndexes() {
     await client.connect();
     const db = client.db(process.env.DB_NAME);
     const eventsCollection = db.collection(process.env.EVENTS_COLLECTION_NAME);
-    eventsCollection.createIndex({ "location": "2dsphere" });
+    await eventsCollection.createIndex({ "location": "2dsphere" });
 
     console.log('Events location index created');
   } catch (err) {
