@@ -22,12 +22,14 @@ export async function connectToDatabase() {
   // Create a collection reference
   const videosCollection = documentorDB.collection(process.env.VIDEOS_COLLECTION_NAME || '');
   const eventsCollection = documentorDB.collection(process.env.EVENTS_COLLECTION_NAME || '');
+  const citiesCollection = documentorDB.collection(process.env.CITIES_COLLECTION_NAME || '');
 
   // Assign the collection reference to the collections object
   collections.videos = videosCollection;
   collections.events = eventsCollection;
+  collections.cities = citiesCollection;
 
   console.log(
-    `Successfully connected to db: ${documentorDB.databaseName} and collections: ${videosCollection.collectionName}, ${eventsCollection.collectionName}`
+    `Successfully connected to db: ${documentorDB.databaseName}.`
   );
 }
