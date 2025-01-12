@@ -156,4 +156,43 @@ events.put('/events/:id', async (req, res) => {
   }
 });
 
+
+//// Analytics endpoints
+
+events.get('/events-count-per-type', async (req, res) => {
+  const { fromDate, toDate, lat, long, radius } = req.query;
+
+  try {
+    let query = {};
+
+    if (fromDate && toDate) {
+      query.startTime = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+    } else if (fromDate) {
+      query.startTime = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      query.startTime = { $lte: new Date(toDate) };
+    }
+
+    if (lat && long && radius) {
+      const radiusInMeters = Number(radius) * 1000;
+      query.location = {
+        $geoWithin: {
+          $centerSphere: [[Number(long), Number(lat)], radiusInMeters / 6378100]
+        }
+      };
+    }
+
+    const eventsCountPerType = await collections.events.aggregate([
+      { $match: query },
+      { $group: { _id: "$types", count: { $sum: 1 } } }
+    ]).toArray();
+    console.log(eventsCountPerType);
+
+    res.json(eventsCountPerType);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching events count per type', error });
+  }
+});
+
+
 export default events;
