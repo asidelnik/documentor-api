@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import videos from './src/routes/videos.js';
 import events from './src/routes/events.js';
+import analytics from './src/routes/analytics.js';
 import cities from './src/routes/cities.js';
 import shared from './src/routes/shared.js';
 import { connectToDatabase } from './src/services/db.service.js';
@@ -17,6 +18,7 @@ connectToDatabase()
   .then(() => {
     app.use('/videos', videos);
     app.use('/events', events);
+    app.use('/analytics', analytics);
     app.use('/cities', cities);
     app.use('/shared', shared);
 
