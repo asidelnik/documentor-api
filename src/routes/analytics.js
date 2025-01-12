@@ -118,4 +118,43 @@ analytics.get('/events-frequency-over-time', async (req, res) => {
   }
 });
 
+analytics.get('/recent-events', async (req, res) => {
+  const { type, fromDate, toDate, lat, long, radius } = req.query;
+
+  try {
+    let query = {};
+
+    if (type) {
+      query.types = type;
+    }
+
+    if (fromDate && toDate) {
+      query.startTime = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+    } else if (fromDate) {
+      query.startTime = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      query.startTime = { $lte: new Date(toDate) };
+    }
+
+    if (lat && long && radius) {
+      const radiusInMeters = Number(radius) * 1000;
+      query.location = {
+        $geoWithin: {
+          $centerSphere: [[Number(long), Number(lat)], radiusInMeters / 6378100]
+        }
+      };
+    }
+
+    const recentEvents = await collections.events.find(query)
+      .sort({ startTime: -1 })
+      .limit(5)
+      .project({ title: 1, startTime: 1, 'locationTexts.address': 1, 'locationTexts.city': 1 })
+      .toArray();
+
+    res.json(recentEvents);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching recent events', error });
+  }
+});
+
 export default analytics;
