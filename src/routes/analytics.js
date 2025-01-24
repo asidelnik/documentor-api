@@ -27,11 +27,13 @@ analytics.get('/events-count-per-type', async (req, res) => {
       };
     }
 
-    const eventsCountPerType = await collections.events.aggregate([
-      { $match: query },
-      { $group: { _id: "$types", count: { $sum: 1 } } }
-    ]).toArray();
-    console.log(eventsCountPerType);
+    const eventsCountPerType = await collections.events
+      .aggregate([
+        { $match: query },
+        { $group: { _id: "$types", count: { $sum: 1 } } }
+      ])
+      .project({ type: 1, count: 1 })
+      .toArray();
 
     res.json(eventsCountPerType);
   } catch (error) {
@@ -57,14 +59,17 @@ analytics.get('/dangerous-cities', async (req, res) => {
       query.startTime = { $lte: new Date(toDate) };
     }
 
-    const dangerousCities = await collections.events.aggregate([
-      { $match: query },
-      { $group: { _id: "$locationTexts.city", eventsCount: { $sum: 1 } } },
-      { $sort: { eventsCount: -1 } },
-      { $limit: 8 }
-    ]).toArray();
+    const dangerousCities = await collections.events
+      .aggregate([
+        { $match: query },
+        { $group: { _id: "$locationTexts.city", eventsCount: { $sum: 1 } } },
+        { $sort: { eventsCount: -1 } },
+        { $limit: 8 },
+        { $project: { cityName: "$_id", eventsCount: 1 } }
+      ])
+      .toArray();
 
-    res.json(dangerousCities.map(city => ({ cityName: city._id, eventsCount: city.eventsCount })));
+    res.json(dangerousCities);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching dangerous cities', error });
   }
@@ -148,9 +153,10 @@ analytics.get('/recent-events', async (req, res) => {
     const recentEvents = await collections.events.find(query)
       .sort({ startTime: -1 })
       .limit(5)
-      .project({ title: 1, startTime: 1, 'locationTexts.address': 1, 'locationTexts.city': 1 })
+      .project({ title: 1, startTime: 1, 'locationTexts.country': 1, 'locationTexts.address': 1, 'locationTexts.city': 1, types: 1 })
       .toArray();
 
+    console.log(recentEvents, typeof recentEvents.startTime);
     res.json(recentEvents);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching recent events', error });
