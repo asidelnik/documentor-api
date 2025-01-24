@@ -42,13 +42,13 @@ analytics.get('/events-count-per-type', async (req, res) => {
 });
 
 analytics.get('/dangerous-cities', async (req, res) => {
-  const { type, fromDate, toDate } = req.query;
+  const { eventTypeId, fromDate, toDate } = req.query;
 
   try {
     let query = {};
 
-    if (type) {
-      query.types = type;
+    if (eventTypeId) {
+      query.types = { $in: [eventTypeId] };
     }
 
     if (fromDate && toDate) {
@@ -65,7 +65,7 @@ analytics.get('/dangerous-cities', async (req, res) => {
         { $group: { _id: "$locationTexts.city", eventsCount: { $sum: 1 } } },
         { $sort: { eventsCount: -1 } },
         { $limit: 8 },
-        { $project: { cityName: "$_id", eventsCount: 1 } }
+        { $project: { cityName: "$_id", eventsCount: 1, _id: 0 } }
       ])
       .toArray();
 
@@ -76,13 +76,13 @@ analytics.get('/dangerous-cities', async (req, res) => {
 });
 
 analytics.get('/events-frequency-over-time', async (req, res) => {
-  const { type, year, lat, long, radius } = req.query;
+  const { eventTypeId, year, lat, long, radius } = req.query;
 
   try {
     let query = {};
 
-    if (type) {
-      query.types = type;
+    if (eventTypeId) {
+      query.types = { $in: [eventTypeId] };
     }
 
     if (year) {
@@ -124,13 +124,13 @@ analytics.get('/events-frequency-over-time', async (req, res) => {
 });
 
 analytics.get('/recent-events', async (req, res) => {
-  const { type, fromDate, toDate, lat, long, radius } = req.query;
+  const { eventTypeId, fromDate, toDate, lat, long, radius } = req.query;
 
   try {
     let query = {};
 
-    if (type) {
-      query.types = type;
+    if (eventTypeId) {
+      query.types = { $in: [eventTypeId] };
     }
 
     if (fromDate && toDate) {
@@ -156,7 +156,7 @@ analytics.get('/recent-events', async (req, res) => {
       .project({ title: 1, startTime: 1, 'locationTexts.country': 1, 'locationTexts.address': 1, 'locationTexts.city': 1, types: 1 })
       .toArray();
 
-    console.log(recentEvents, typeof recentEvents.startTime);
+    // console.log(recentEvents, typeof recentEvents.startTime);
     res.json(recentEvents);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching recent events', error });
