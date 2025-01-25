@@ -16,6 +16,19 @@ shared.get('/header-badges', async (req, res) => {
   }
 });
 
+shared.get('/event-types', async (req, res) => {
+  try {
+    const eventTypes = await collections.eventTypes
+      .aggregate([
+        { $project: { id: "$_id", label: 1, _id: 0 } }
+      ])
+      .toArray();
+    res.json(eventTypes);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching event types', error });
+  }
+});
+
 shared.get('*', (_req, res) => {
   res.status(404).json({ message: 'Resource not found' });
 });
