@@ -159,7 +159,7 @@ events.put('/events/:id', async (req, res) => {
 
 events.put('/add-videos-to-event/:eventId', async (req, res) => {
   const { eventId } = req.params;
-  const { videoIds } = req.body;
+  const videoIds = req.body;
 
   try {
     if (!eventId || !videoIds || !Array.isArray(videoIds)) {
@@ -173,12 +173,12 @@ events.put('/add-videos-to-event/:eventId', async (req, res) => {
       await session.withTransaction(async () => {
         result = await collections.events.updateOne(
           { _id: new ObjectId(eventId) },
-          { $addToSet: { videoIds: { $each: videoIds } } },
+          { $addToSet: { videoIds: { $each: videoIds.map(id => new ObjectId(id)) } } },
           { session }
         );
 
-        await collections.videos.updateMany(
-          { _id: { $in: videoIds.map(id => Number(id)) } },
+        const videoUpdateResult = await collections.videos.updateMany(
+          { _id: { $in: videoIds.map(id => new ObjectId(id)) } },
           { $set: { eventId: new ObjectId(eventId) } },
           { session }
         );
@@ -191,9 +191,11 @@ events.put('/add-videos-to-event/:eventId', async (req, res) => {
       throw new Error('Event not found');
     }
 
-    res.status(200).json({ message: 'Event updated successfully' });
+    res.status(200).json({ message: 'Added videos to Event' });
+    console.log('Response: Added videos to Event');
   } catch (error) {
-    res.status(500).json({ message: 'Error updating event', error });
+    console.error('Error in adding videos to event:', error);
+    res.status(500).json({ message: 'Error in adding videos to event', error });
   }
 });
 
