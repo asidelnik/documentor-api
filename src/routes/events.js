@@ -177,7 +177,7 @@ events.put('/add-videos-to-event/:eventId', async (req, res) => {
           { session }
         );
 
-        const videoUpdateResult = await collections.videos.updateMany(
+        await collections.videos.updateMany(
           { _id: { $in: videoIds.map(id => new ObjectId(id)) } },
           { $set: { eventId: new ObjectId(eventId) } },
           { session }
