@@ -88,10 +88,14 @@ events.get('/events', async (req, res) => {
     const eventsWithCounts = await Promise.all(events.map(async event => {
       const eventVideos = await collections.videos.find({ eventId: event._id }).toArray();
       const eventVideosUnprocessed = await collections.videos.find({ eventId: event._id, status: 1 }).toArray();
+      const types = (await collections.eventTypes.find({ _id: { $in: event.types } }).project({ label: 1, _id: 0 }).toArray()).map(type => type.label);
+      const typesString = types.length === 0 ? '' : types.length > 1 ? types.join(', ') : types[0];
+
       return {
         ...event,
         videosUnprocessedCount: eventVideosUnprocessed.length,
-        videosCount: eventVideos.length
+        videosCount: eventVideos.length,
+        typesString
       };
     }));
 
