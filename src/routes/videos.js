@@ -111,6 +111,7 @@ videos.get('/videos', async (req, res) => {
       .find(query)
       .skip((page - 1) * limit)
       .limit(Number(limit))
+      .sort({ startTime: -1 })
       .toArray();
 
     res.json(videos);

@@ -42,13 +42,16 @@ analytics.get('/events-count-per-type', async (req, res) => {
 });
 
 analytics.get('/dangerous-cities', async (req, res) => {
-  const { eventTypeId, fromDate, toDate } = req.query;
+  const { eventTypeIds, fromDate, toDate } = req.query;
 
   try {
     let query = {};
 
-    if (eventTypeId) {
-      query.types = { $in: [eventTypeId] };
+    if (eventTypeIds) {
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      if (eventTypes.length > 0) {
+        query.types = { $in: eventTypes };
+      }
     }
 
     if (fromDate && toDate) {
@@ -76,13 +79,16 @@ analytics.get('/dangerous-cities', async (req, res) => {
 });
 
 analytics.get('/events-frequency-over-time', async (req, res) => {
-  const { eventTypeId, year, lat, long, radius } = req.query;
+  const { eventTypeIds, year, lat, long, radius } = req.query;
 
   try {
     let query = {};
 
-    if (eventTypeId) {
-      query.types = { $in: [eventTypeId] };
+    if (eventTypeIds) {
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      if (eventTypes.length > 0) {
+        query.types = { $in: eventTypes };
+      }
     }
 
     if (year) {
@@ -124,13 +130,16 @@ analytics.get('/events-frequency-over-time', async (req, res) => {
 });
 
 analytics.get('/recent-events', async (req, res) => {
-  const { eventTypeId, fromDate, toDate, lat, long, radius } = req.query;
+  const { eventTypeIds, fromDate, toDate, lat, long, radius } = req.query;
 
   try {
     let query = {};
 
-    if (eventTypeId) {
-      query.types = { $in: [eventTypeId] };
+    if (eventTypeIds) {
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      if (eventTypes.length > 0) {
+        query.types = { $in: eventTypes };
+      }
     }
 
     if (fromDate && toDate) {
