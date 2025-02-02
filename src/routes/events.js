@@ -40,7 +40,7 @@ events.get('/events-autocomplete', async (req, res) => {
 });
 
 events.get('/events', async (req, res) => {
-  const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 10 } = req.query;
+  const { fromDate, toDate, priority, freeText, statuses, eventTypeIds, page = 1, limit = 10 } = req.query;
 
   try {
     let query = {};
@@ -69,6 +69,13 @@ events.get('/events', async (req, res) => {
     if (statuses) {
       const statusesArray = statuses.split(',').map(Number);
       query.status = { $in: statusesArray };
+    }
+
+    if (eventTypeIds) {
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type).map(type => new ObjectId(type));
+      if (eventTypes.length > 0) {
+        query.types = { $in: eventTypes };
+      }
     }
 
     const events = await collections.events
