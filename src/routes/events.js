@@ -40,7 +40,7 @@ events.get('/events-autocomplete', async (req, res) => {
 });
 
 events.get('/events', async (req, res) => {
-  const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 3 } = req.query;
+  const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 10 } = req.query;
 
   try {
     let query = {};
