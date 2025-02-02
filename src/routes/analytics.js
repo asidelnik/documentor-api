@@ -48,7 +48,7 @@ analytics.get('/dangerous-cities', async (req, res) => {
     let query = {};
 
     if (eventTypeIds) {
-      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type).map(type => new ObjectId(type));
       if (eventTypes.length > 0) {
         query.types = { $in: eventTypes };
       }
@@ -85,7 +85,7 @@ analytics.get('/events-frequency-over-time', async (req, res) => {
     let query = {};
 
     if (eventTypeIds) {
-      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type).map(type => new ObjectId(type));
       if (eventTypes.length > 0) {
         query.types = { $in: eventTypes };
       }
@@ -136,7 +136,7 @@ analytics.get('/recent-events', async (req, res) => {
     let query = {};
 
     if (eventTypeIds) {
-      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type);
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type).map(type => new ObjectId(type));
       if (eventTypes.length > 0) {
         query.types = { $in: eventTypes };
       }

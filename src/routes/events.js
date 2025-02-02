@@ -40,7 +40,7 @@ events.get('/events-autocomplete', async (req, res) => {
 });
 
 events.get('/events', async (req, res) => {
-  const { fromDate, toDate, priority, freeText, statuses, page = 1, limit = 10 } = req.query;
+  const { fromDate, toDate, priority, freeText, statuses, eventTypeIds, page = 1, limit = 10 } = req.query;
 
   try {
     let query = {};
@@ -71,6 +71,13 @@ events.get('/events', async (req, res) => {
       query.status = { $in: statusesArray };
     }
 
+    if (eventTypeIds) {
+      const eventTypes = eventTypeIds.split(',').map(type => type.trim()).filter(type => type).map(type => new ObjectId(type));
+      if (eventTypes.length > 0) {
+        query.types = { $in: eventTypes };
+      }
+    }
+
     const events = await collections.events
       .find(query)
       .sort({ videoIds: -1, startTime: -1 })
@@ -81,10 +88,14 @@ events.get('/events', async (req, res) => {
     const eventsWithCounts = await Promise.all(events.map(async event => {
       const eventVideos = await collections.videos.find({ eventId: event._id }).toArray();
       const eventVideosUnprocessed = await collections.videos.find({ eventId: event._id, status: 1 }).toArray();
+      const types = (await collections.eventTypes.find({ _id: { $in: event.types } }).project({ label: 1, _id: 0 }).toArray()).map(type => type.label);
+      const typesString = types.length === 0 ? '' : types.length > 1 ? types.join(', ') : types[0];
+
       return {
         ...event,
         videosUnprocessedCount: eventVideosUnprocessed.length,
-        videosCount: eventVideos.length
+        videosCount: eventVideos.length,
+        typesString
       };
     }));
 
