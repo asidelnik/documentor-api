@@ -9,10 +9,11 @@ events.get('/events/:id', async (req, res) => {
 
   try {
     const event = await collections.events.findOne({ _id: new ObjectId(id) });
+    const typesLabels = (await collections.eventTypes.find({ _id: { $in: event.types } }).project({ label: 1, _id: 0 }).toArray()).map(type => type.label);
 
     if (event) {
       const videos = await collections.videos.find({ eventId: new ObjectId(id) }).toArray();
-      res.json({ ...event, videos });
+      res.json({ ...event, videos, typesLabels });
     } else {
       res.status(404).send('Event not found');
     }
