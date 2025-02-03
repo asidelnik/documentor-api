@@ -109,12 +109,14 @@ events.get('/events', async (req, res) => {
 });
 
 events.post('/events', async (req, res) => {
-  const { title, priority, startTime, endTime, description, status } = req.body;
+  const { title, eventTypes, priority, startTime, endTime, description, status } = req.body;
 
   try {
     if (!title || !priority || !startTime || !status) {
       throw new Error('Missing required fields');
     }
+
+    const types = eventTypes && eventTypes.length > 0 ? eventTypes.map(type => new ObjectId(type)) : [];
 
     const newEvent = {
       title,
@@ -125,7 +127,8 @@ events.post('/events', async (req, res) => {
       tags: [],
       status,
       priority,
-      duration: 0
+      duration: 0,
+      types
     };
 
     const result = await collections.events.insertOne(newEvent);
