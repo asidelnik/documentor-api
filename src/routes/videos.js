@@ -84,7 +84,7 @@ videos.put('/video-set-event/:id', async (req, res) => {
 });
 
 videos.get('/videos', async (req, res) => {
-  const { fromDate, toDate, statuses, page = 1, limit = 10 } = req.query;
+  const { fromDate, toDate, statuses, lat, long, radius, page = 1, limit = 10 } = req.query;
   let { eventId } = req.query;
 
   try {
@@ -105,6 +105,15 @@ videos.get('/videos', async (req, res) => {
 
     if (eventId) {
       query.eventId = new ObjectId(eventId);
+    }
+
+    if (lat && long && radius) {
+      const radiusInMeters = Number(radius) * 1000;
+      query.location = {
+        $geoWithin: {
+          $centerSphere: [[Number(long), Number(lat)], radiusInMeters / 6378100]
+        }
+      };
     }
 
     const videos = await collections.videos
